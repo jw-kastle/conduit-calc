@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conduit Material & Labor Estimator</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-600: #1d4ed8;
+      --accent: #10b981;
+      --warn: #ef4444;
+      --line: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 24px 16px;
+      background: linear-gradient(180deg, #eef2ff, #f6f7fb);
+      border-bottom: 1px solid var(--line);
+    }
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 2px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0 28px 0;
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .card h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 13px; color: #374151; margin-bottom: 6px; }
+    input[type="number"], select, input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    input[type="number"]:focus, select:focus, input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .note { background: #f0fdf4; border: 1px solid #bbf7d0; color: #065f46; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+    .warn { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+    .actions { display: flex; gap: 10px; margin-top: 8px; }
+    button {
+      background: var(--primary);
+      border: 1px solid var(--primary-600);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    button.secondary { background: #fff; color: var(--primary); border-color: var(--primary); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    th { background: #f8fafc; font-weight: 600; }
+    tfoot td { font-weight: 700; }
+    .right { text-align: right; }
+    .muted { color: var(--muted); }
+
+    .totals {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (max-width: 680px) { .totals { grid-template-columns: 1fr; } }
+    .kpi {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .kpi .label { font-size: 12px; color: var(--muted); }
+    .kpi .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+
+    footer { color: var(--muted); font-size: 12px; padding: 18px 0 28px; }
+    .small { font-size: 12px; }
+    .inline { display: inline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Conduit Material & Labor Estimator</h1>
+      <div class="subtitle">Estimate bill of materials, labor, and total cost. Prices are approximate Graybar-based estimates.</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="layout">
+      <section class="card">
+        <h2>Inputs</h2>
+        <form id="estimatorForm" autocomplete="off">
+          <div class="grid-2">
+            <div class="field">
+              <label for="totalFootage">Total Footage (ft)</label>
+              <input type="number" id="totalFootage" min="0" step="1" value="300" required />
+              <div class="hint">Sum of all conduit footage.</div>
+            </div>
+            <div class="field">
+              <label for="conduitType">Conduit Type</label>
+              <select id="conduitType">
+                <option value="EMT">EMT (Electrical Metallic Tubing)</option>
+                <option value="PVC">PVC (Schedule 40)</option>
+                <option value="RMC">RMC (Rigid Metal Conduit)</option>
+                <option value="FMC">FMC (Flexible Metallic Conduit)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="singleSizeRow" class="grid-2">
+            <div class="field">
+              <label for="conduitSize">Conduit Size</label>
+              <select id="conduitSize"></select>
+            </div>
+            <div class="field">
+              <label for="design">Design</label>
+              <select id="design">
+                <option value="Homerun">Homerun</option>
+                <option value="TrunkBranch">Trunk and Branch</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="trunkBranchRow" class="card" style="display:none; padding:12px; background:#fbfbfd; border-color:#e9ecf2;">
+            <div class="grid-3">
+              <div class="field">
+                <label for="trunkSize">Trunk Size</label>
+                <select id="trunkSize"></select>
+              </div>
+              <div class="field">
+                <label for="branchSize">Branch Size</label>
+                <select id="branchSize"></select>
+              </div>
+              <div class="field">
+                <label for="pullBoxes">12" Pull Boxes</label>
+                <input type="number" id="pullBoxes" min="0" step="1" value="1" />
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="field">
+                <label for="trunkFootage">Trunk Footage (ft)</label>
+                <input type="number" id="trunkFootage" min="0" step="1" value="150" />
+              </div>
+              <div class="field">
+                <label for="branchFootage">Branch Footage (ft)</label>
+                <input type="number" id="branchFootage" min="0" step="1" value="150" />
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <div class="note">Trunk & Branch design requires 12" pull boxes (per NEC/NFPA). Ensure counts are adequate for layout.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="field">
+              <label for="bends">Number of Bends (90° equivalent)</label>
+              <input type="number" id="bends" min="0" step="1" value="8" />
+            </div>
+            <div class="field">
+              <label for="crewSize">Crew Size (persons)</label>
+              <input type="number" id="crewSize" min="1" step="1" value="2" />
+            </div>
+            <div class="field">
+              <label for="laborRate">Labor Rate (USD/hr)</label>
+              <input type="number" id="laborRate" min="0" step="1" value="85" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label for="complexity">Complexity</label>
+              <select id="complexity">
+                <option value="Light">Light (4.5 hrs/100 ft)</option>
+                <option value="Standard" selected>Standard (6 hrs/100 ft)</option>
+                <option value="Complex">Complex (9 hrs/100 ft)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="includeCouplingCost" class="row"><input type="checkbox" id="includeCouplingCost" /> <span class="small">Bill couplings separately (uncheck for EMT/RMC if couplings come with sticks)</span></label>
+            </div>
+          </div>
+
+          <div id="validation" class="warn" style="display:none; margin-top:8px;"></div>
+
+          <div class="actions">
+            <button type="button" id="calculateBtn">Calculate</button>
+            <button type="button" class="secondary" id="resetBtn">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Results</h2>
+        <div id="resultsPlaceholder" class="muted">Enter inputs and click Calculate.</div>
+        <div id="results" style="display:none;">
+          <div id="bom"></div>
+          <div class="totals">
+            <div class="kpi">
+              <div class="label">Material Cost</div>
+              <div class="value" id="materialCost">$0.00</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Labor Cost</div>
+              <div class="value" id="laborCost">$0.00</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Total Labor Hours</div>
+              <div class="value" id="totalHours">0.0 hrs</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Labor per Person</div>
+              <div class="value" id="laborPerPerson">0.0 hrs/person</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Grand Total (Material + Labor)</div>
+              <div class="value" id="grandTotal">$0.00</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Assumptions</div>
+              <div class="value small" id="assumptions"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      Notes:
+      <ul>
+        <li>Prices are approximate and based on typical Graybar retail ranges as of 2025. Confirm current pricing with your local Graybar representative.</li>
+        <li>Labor complexity multipliers: Light = 4.5 hrs/100 ft, Standard = 6 hrs/100 ft, Complex = 9 hrs/100 ft. Additional time per bend and per pull box is applied.</li>
+        <li>This tool simplifies certain assumptions (e.g., couplings, connectors, distribution of bends). Adjust quantities as needed.</li>
+      </ul>
+    </footer>
+  </main>
+
+  <script>
+    const SIZES = [
+      '1/2"','3/4"','1"','1-1/4"','1-1/2"','2"','2-1/2"','3"','3-1/2"','4"','5"','6"'
+    ];
+
+    // Approximate Graybar-based unit costs (USD) — prices vary by region and date
+    // perFoot: price per foot of conduit
+    // elbow: pre-formed 90° elbow price per each
+    // coupling: straight coupling price per each
+    // connector: termination connector price per each
+    const PRICES = {
+      EMT: {
+        '1/2"':  { perFoot: 0.60,  elbow: 6,   coupling: 1.5,  connector: 1.8 },
+        '3/4"':  { perFoot: 0.85,  elbow: 8,   coupling: 2.0,  connector: 2.2 },
+        '1"':    { perFoot: 1.20,  elbow: 10,  coupling: 2.5,  connector: 2.8 },
+        '1-1/4"':{ perFoot: 1.80,  elbow: 16,  coupling: 4.0,  connector: 4.5 },
+        '1-1/2"':{ perFoot: 2.40,  elbow: 20,  coupling: 5.0,  connector: 5.5 },
+        '2"':    { perFoot: 3.60,  elbow: 30,  coupling: 7.0,  connector: 7.5 },
+        '2-1/2"':{ perFoot: 7.00,  elbow: 70,  coupling: 15,   connector: 16 },
+        '3"':    { perFoot: 9.50,  elbow: 90,  coupling: 20,   connector: 22 },
+        '3-1/2"':{ perFoot: 12.50, elbow: 120, coupling: 30,   connector: 32 },
+        '4"':    { perFoot: 16.00, elbow: 150, coupling: 40,   connector: 45 },
+        '5"':    { perFoot: 30.00, elbow: 280, coupling: 80,   connector: 90 },
+        '6"':    { perFoot: 42.00, elbow: 380, coupling: 120,  connector: 130 },
+      },
+      PVC: {
+        '1/2"':  { perFoot: 0.30,  elbow: 3,   coupling: 1.0,  connector: 1.2 },
+        '3/4"':  { perFoot: 0.40,  elbow: 4,   coupling: 1.2,  connector: 1.4 },
+        '1"':    { perFoot: 0.55,  elbow: 5,   coupling: 1.5,  connector: 1.7 },
+        '1-1/4"':{ perFoot: 0.80,  elbow: 7,   coupling: 2.0,  connector: 2.2 },
+        '1-1/2"':{ perFoot: 1.00,  elbow: 9,   coupling: 2.5,  connector: 2.8 },
+        '2"':    { perFoot: 1.50,  elbow: 12,  coupling: 3.5,  connector: 3.8 },
+        '2-1/2"':{ perFoot: 3.00,  elbow: 20,  coupling: 6.0,  connector: 6.5 },
+        '3"':    { perFoot: 4.00,  elbow: 28,  coupling: 8.0,  connector: 8.5 },
+        '3-1/2"':{ perFoot: 5.50,  elbow: 40,  coupling: 12,   connector: 13 },
+        '4"':    { perFoot: 7.00,  elbow: 50,  coupling: 15,   connector: 16 },
+        '5"':    { perFoot: 12.00, elbow: 100, coupling: 28,   connector: 30 },
+        '6"':    { perFoot: 18.00, elbow: 150, coupling: 40,   connector: 45 },
+      },
+      RMC: {
+        '1/2"':  { perFoot: 2.50,  elbow: 12,  coupling: 4.0,  connector: 4.5 },
+        '3/4"':  { perFoot: 3.20,  elbow: 16,  coupling: 5.0,  connector: 5.5 },
+        '1"':    { perFoot: 4.20,  elbow: 20,  coupling: 6.0,  connector: 6.5 },
+        '1-1/4"':{ perFoot: 6.50,  elbow: 30,  coupling: 9.0,  connector: 10 },
+        '1-1/2"':{ perFoot: 8.50,  elbow: 38,  coupling: 12,   connector: 13 },
+        '2"':    { perFoot: 12.00, elbow: 55,  coupling: 18,   connector: 20 },
+        '2-1/2"':{ perFoot: 22.00, elbow: 110, coupling: 35,   connector: 38 },
+        '3"':    { perFoot: 30.00, elbow: 150, coupling: 50,   connector: 55 },
+        '3-1/2"':{ perFoot: 38.00, elbow: 190, coupling: 70,   connector: 75 },
+        '4"':    { perFoot: 46.00, elbow: 230, coupling: 90,   connector: 100 },
+        '5"':    { perFoot: 90.00, elbow: 450, coupling: 175,  connector: 190 },
+        '6"':    { perFoot: 120.00,elbow: 600, coupling: 240,  connector: 260 },
+      },
+      FMC: {
+        '1/2"':  { perFoot: 0.80,  elbow: 0,   coupling: 0,    connector: 2.5 },
+        '3/4"':  { perFoot: 1.20,  elbow: 0,   coupling: 0,    connector: 3.0 },
+        '1"':    { perFoot: 1.60,  elbow: 0,   coupling: 0,    connector: 3.8 },
+        '1-1/4"':{ perFoot: 2.40,  elbow: 0,   coupling: 0,    connector: 5.0 },
+        '1-1/2"':{ perFoot: 3.00,  elbow: 0,   coupling: 0,    connector: 6.5 },
+        '2"':    { perFoot: 4.50,  elbow: 0,   coupling: 0,    connector: 8.5 },
+        '2-1/2"':{ perFoot: 6.50,  elbow: 0,   coupling: 0,    connector: 12 },
+        '3"':    { perFoot: 8.50,  elbow: 0,   coupling: 0,    connector: 16 },
+        '3-1/2"':{ perFoot: 12.00, elbow: 0,   coupling: 0,    connector: 20 },
+        '4"':    { perFoot: 15.00, elbow: 0,   coupling: 0,    connector: 26 },
+        '5"':    { perFoot: 22.00, elbow: 0,   coupling: 0,    connector: 38 },
+        '6"':    { perFoot: 32.00, elbow: 0,   coupling: 0,    connector: 55 },
+      }
+    };
+
+    const PULL_BOX_PRICE = 60; // 12x12x6 NEMA 1 est.
+
+    const COMPLEXITY_TO_HRS_PER_100 = {
+      Light: 4.5,
+      Standard: 6.0,
+      Complex: 9.0,
+    };
+
+    function formatCurrency(n) {
+      return n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    }
+
+    function populateSizeSelect(select) {
+      select.innerHTML = '';
+      for (const s of SIZES) {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        select.appendChild(opt);
+      }
+      select.value = '1"';
+    }
+
+    function init() {
+      const conduitSize = document.getElementById('conduitSize');
+      const trunkSize = document.getElementById('trunkSize');
+      const branchSize = document.getElementById('branchSize');
+      populateSizeSelect(conduitSize);
+      populateSizeSelect(trunkSize);
+      populateSizeSelect(branchSize);
+
+      const design = document.getElementById('design');
+      const trunkBranchRow = document.getElementById('trunkBranchRow');
+      const includeCouplingCost = document.getElementById('includeCouplingCost');
+      const conduitType = document.getElementById('conduitType');
+
+      function adjustCouplingDefault() {
+        const type = conduitType.value;
+        // EMT and RMC often include a coupling per stick; default to not separately billing couplings
+        includeCouplingCost.checked = !(type === 'EMT' || type === 'RMC');
+      }
+      adjustCouplingDefault();
+
+      conduitType.addEventListener('change', adjustCouplingDefault);
+
+      design.addEventListener('change', () => {
+        trunkBranchRow.style.display = design.value === 'TrunkBranch' ? 'block' : 'none';
+      });
+
+      document.getElementById('calculateBtn').addEventListener('click', onCalculate);
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        document.getElementById('estimatorForm').reset();
+        adjustCouplingDefault();
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('resultsPlaceholder').style.display = 'block';
+        document.getElementById('validation').style.display = 'none';
+        // reapply defaults
+        document.getElementById('conduitSize').value = '1"';
+        document.getElementById('trunkSize').value = '1"';
+        document.getElementById('branchSize').value = '1"';
+        document.getElementById('design').value = 'Homerun';
+        document.getElementById('trunkBranchRow').style.display = 'none';
+      });
+    }
+
+    function validateInputs({ totalFootage, design, trunkFootage, branchFootage }) {
+      const v = document.getElementById('validation');
+      v.style.display = 'none';
+      v.textContent = '';
+      if (totalFootage <= 0) {
+        v.textContent = 'Total Footage must be greater than zero.';
+        v.style.display = 'block';
+        return false;
+      }
+      if (design === 'TrunkBranch') {
+        const sum = trunkFootage + branchFootage;
+        if (sum !== totalFootage) {
+          v.innerHTML = `For Trunk & Branch, Trunk Footage + Branch Footage (${sum} ft) must equal Total Footage (${totalFootage} ft).`;
+          v.style.display = 'block';
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function computeMaterials(inputs) {
+      const {
+        type, design, size, trunkSize, branchSize,
+        totalFootage, trunkFootage, branchFootage,
+        bends, includeCouplingCost, pullBoxes
+      } = inputs;
+
+      const items = [];
+      let materialCost = 0;
+
+      function addItem(name, sizeLabel, qty, unit, unitPrice, meta = {}) {
+        const cost = unitPrice * qty;
+        materialCost += cost;
+        items.push({ name, size: sizeLabel, qty, unit, unitPrice, cost, ...meta });
+      }
+
+      function addConduitRun(runLabel, runSize, footage) {
+        if (footage <= 0) return;
+        const price = PRICES[type][runSize];
+        addItem(`${type} Conduit (${runLabel})`, runSize, footage, 'ft', price.perFoot);
+        // Couplings: for EMT/PVC/RMC based on 10 ft sticks; FMC typically coil, no couplings
+        if (type !== 'FMC') {
+          const sticks = Math.ceil(footage / 10);
+          const couplingQty = Math.max(0, sticks - 1);
+          const couplingUnitPrice = includeCouplingCost ? price.coupling : 0;
+          addItem('Straight Couplings', runSize, couplingQty, 'ea', couplingUnitPrice, { note: includeCouplingCost ? '' : 'Included with sticks or not billed' });
+        }
+      }
+
+      if (design === 'TrunkBranch') {
+        addConduitRun('Trunk', trunkSize, trunkFootage);
+        addConduitRun('Branch', branchSize, branchFootage);
+        if (pullBoxes > 0) {
+          addItem('12" Pull Box (NEMA 1 est.)', '12x12x6', pullBoxes, 'ea', PULL_BOX_PRICE);
+        }
+      } else {
+        addConduitRun('Run', size, totalFootage);
+      }
+
+      // Elbows (90°)
+      // Distribute bends proportionally by footage between trunk/branch
+      let bendsTrunk = 0, bendsBranch = 0;
+      if (design === 'TrunkBranch') {
+        const total = trunkFootage + branchFootage;
+        bendsTrunk = Math.round(bends * (trunkFootage / total));
+        bendsBranch = bends - bendsTrunk;
+        if (bendsTrunk > 0) addItem('90° Elbows (Trunk)', trunkSize, bendsTrunk, 'ea', PRICES[type][trunkSize].elbow);
+        if (bendsBranch > 0) addItem('90° Elbows (Branch)', branchSize, bendsBranch, 'ea', PRICES[type][branchSize].elbow);
+      } else {
+        if (bends > 0) addItem('90° Elbows', size, bends, 'ea', PRICES[type][size].elbow);
+      }
+
+      // Connectors: base 2 per system + additional for pull boxes (2 each)
+      let connectors = 2 + (design === 'TrunkBranch' ? pullBoxes * 2 : 0);
+      // FMC often needs intermediate connectors; approximate: +1 per 25 ft
+      if (type === 'FMC') {
+        const footage = design === 'TrunkBranch' ? (trunkFootage + branchFootage) : totalFootage;
+        connectors += Math.floor(footage / 25);
+      }
+      const connectorSize = design === 'TrunkBranch' ? (trunkFootage >= branchFootage ? trunkSize : branchSize) : size;
+      addItem('Connectors (terminations)', connectorSize, connectors, 'ea', PRICES[type][connectorSize].connector);
+
+      return { items, materialCost };
+    }
+
+    function computeLabor(inputs) {
+      const { totalFootage, complexity, bends, pullBoxes, crewSize, laborRate } = inputs;
+      const base = COMPLEXITY_TO_HRS_PER_100[complexity] * (totalFootage / 100);
+      const bendTime = 0.25 * bends; // 15 minutes per 90° equivalent bend
+      const boxTime = 1.0 * pullBoxes; // 1 hour per pull box install
+      const totalHours = base + bendTime + boxTime;
+      const hoursPerPerson = totalHours / Math.max(crewSize, 1);
+      const laborCost = totalHours * laborRate;
+      return { totalHours, hoursPerPerson, laborCost };
+    }
+
+    function renderResults(materials, labor) {
+      const results = document.getElementById('results');
+      const placeholder = document.getElementById('resultsPlaceholder');
+      placeholder.style.display = 'none';
+      results.style.display = 'block';
+
+      const bomDiv = document.getElementById('bom');
+      const rows = materials.items.map(it => `
+        <tr>
+          <td>${it.name}</td>
+          <td class="muted">${it.size || ''}</td>
+          <td class="right">${it.qty.toLocaleString()} ${it.unit}</td>
+          <td class="right">${formatCurrency(it.unitPrice)}</td>
+          <td class="right">${formatCurrency(it.cost)}</td>
+        </tr>
+      `).join('');
+
+      bomDiv.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Size</th>
+              <th class="right">Qty</th>
+              <th class="right">Unit Price</th>
+              <th class="right">Cost</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="right">Material Subtotal</td>
+              <td class="right">${formatCurrency(materials.materialCost)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+
+      document.getElementById('materialCost').textContent = formatCurrency(materials.materialCost);
+      document.getElementById('laborCost').textContent = formatCurrency(labor.laborCost);
+      document.getElementById('totalHours').textContent = `${labor.totalHours.toFixed(1)} hrs`;
+      document.getElementById('laborPerPerson').textContent = `${labor.hoursPerPerson.toFixed(1)} hrs/person`;
+      document.getElementById('grandTotal').textContent = formatCurrency(materials.materialCost + labor.laborCost);
+
+      const assumptions = [
+        'Conduit sticks assumed 10 ft each (non-FMC).',
+        'Couplings billed only if explicitly selected (EMT/RMC commonly include couplings per stick).',
+        'Connectors estimated: 2 base + 2 per pull box; FMC adds ~1 per 25 ft.',
+        'Bends use pre-formed 90° elbows by size and type.',
+        'Pull boxes: 12" nominal (NEMA 1) pricing.',
+      ];
+      document.getElementById('assumptions').innerHTML = assumptions.map(a => `<div>${a}</div>`).join('');
+    }
+
+    function onCalculate() {
+      const totalFootage = Number(document.getElementById('totalFootage').value || 0);
+      const type = document.getElementById('conduitType').value;
+      const design = document.getElementById('design').value;
+      const size = document.getElementById('conduitSize').value;
+      const bends = Number(document.getElementById('bends').value || 0);
+      const crewSize = Number(document.getElementById('crewSize').value || 1);
+      const laborRate = Number(document.getElementById('laborRate').value || 0);
+      const complexity = document.getElementById('complexity').value;
+      const includeCouplingCost = document.getElementById('includeCouplingCost').checked;
+
+      let trunkSize = size, branchSize = size, trunkFootage = totalFootage, branchFootage = 0, pullBoxes = 0;
+      if (design === 'TrunkBranch') {
+        trunkSize = document.getElementById('trunkSize').value;
+        branchSize = document.getElementById('branchSize').value;
+        trunkFootage = Number(document.getElementById('trunkFootage').value || 0);
+        branchFootage = Number(document.getElementById('branchFootage').value || 0);
+        pullBoxes = Number(document.getElementById('pullBoxes').value || 0);
+      }
+
+      const valid = validateInputs({ totalFootage, design, trunkFootage, branchFootage });
+      if (!valid) return;
+
+      const inputs = {
+        type, design, size, trunkSize, branchSize,
+        totalFootage, trunkFootage, branchFootage,
+        bends, includeCouplingCost, pullBoxes,
+        crewSize, laborRate, complexity,
+      };
+
+      const materials = computeMaterials(inputs);
+      const labor = computeLabor(inputs);
+      renderResults(materials, labor);
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
